@@ -80,22 +80,22 @@ See common troubleshooting for Ethernet examples from [upper level](../README.md
 (For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you as soon as possible.)
 
 
+--------------------------------------------------------------------------------------------------------------------------------------
 
 
 BLD - 510B  motor controller, wiring to ESP32 EVB
 
-[ALM]  - [GPIO 10][11] --> Alarm Output   
-[PG]   - [GPIO 08][9] --> Motor Speed Signal Output
-[SV]   - [GPIO 06][7] --> Analogy signal input terminal (AKA PWM input) 
-[BK]   - [GPIO 04][5] --> Braking Stop
-[EN]   - [GPIO 02][3] --> Motor run/stop control
-[F/R]  - [GPIO 00][1] --> Motor forward/reverse control
+Motor Controller Configuration
 
+BLD-510B motor controller wiring to ESP32 EVB:
 
-<!-- I'm Only using [SV] [F/R] [EN] and [PG]  Because i don't have enough Safe GPIO pins on ESP32 evb -->
-
-                         [SV]         [F/R]       [EN]        [PG]
-Motor controller 1: {GPIO_NUM_12, GPIO_NUM_16, GPIO_NUM_32, GPIO_NUM_34},
-Motor controller 2: {GPIO_NUM_13, GPIO_NUM_17, GPIO_NUM_33, GPIO_NUM_35},
-Motor controller 3: {GPIO_NUM_14, GPIO_NUM_2, GPIO_NUM_11, GPIO_NUM_36},
-Motor controller 4: {GPIO_NUM_15, GPIO_NUM_4, GPIO_NUM_10, GPIO_NUM_39}
+|Signal	|GPIO Pin	|Function|
+|--------|-----------|---------|
+|SV	   |GPIO12	   |PWM Input (Motor 1)|
+|F/R	   |GPIO16	   |Direction Control (Motor 1)|
+|EN	   |GPIO32	   |Enable (Motor 1)|
+|PG	   |GPIO34	   |Speed Feedback (Motor 1)|
+|SV	   |GPIO13	   |PWM Input (Motor 2)|
+|F/R	   |GPIO17	   |Direction Control (Motor 2)|
+|EN	   |GPIO33	   |Enable (Motor 2)|
+|PG	   |GPIO35	   |Speed Feedback (Motor 2)|
