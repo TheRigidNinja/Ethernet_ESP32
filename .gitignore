@@ -1,0 +1,55 @@
+# ==========================
+# ESP‑IDF build output
+# ==========================
+# Top‑level build dir
+/build/
+/cmake_build/
+/CMakeFiles/
+/CMakeCache.txt
+Makefile
+# Kconfig auto‑generated files
+sdkconfig
+sdkconfig.old
+sdkconfig.*
+# IDF Component Manager
+deps/
+dl_deps/
+
+# Compiled artifacts
+*.elf
+*.bin
+*.hex
+*.map
+*.img
+*.log
+
+# partition table / generate_bin.py output
+partition_table.bin
+partition_table.csv
+
+# Ninja files
+ninja.
+
+# ==========================
+# Python / venv
+# ==========================
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.env/
+
+# ==========================
+# IDE / Editor folders
+# ==========================
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# ==========================
+# OS cruft
+# ==========================
+.DS_Store
+Thumbs.db

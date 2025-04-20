@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "ethernet_setup.c"
+        "motor_control.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        esp_eth
+        esp_netif
+        esp_event
+        lwip
+)
