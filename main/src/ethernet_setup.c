@@ -1,9 +1,14 @@
+#include "ethernet_init.h"      // your own header
 #include "ethernet_setup.h"
-#include "esp_eth_macro_default.h"
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_log.h"
-#include "ethernet_init.h"    // your board‐specific init (LAN87xx @ addr 0)
+#include "esp_err.h"
+#include "esp_eth_mac.h"        // for ETH_MAC_DEFAULT_CONFIG, esp_eth_mac_new_*
+#include "esp_eth_phy.h"        // for ETH_PHY_DEFAULT_CONFIG, esp_eth_phy_read_reg, ETH_PHY_REG_*
+#include "esp_eth.h"            // for ETH_DEFAULT_CONFIG, esp_eth_driver_install
+
+
 
 static const char *TAG = "eth_setup";
 

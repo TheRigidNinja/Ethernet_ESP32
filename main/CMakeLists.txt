@@ -7,9 +7,10 @@ idf_component_register(
     INCLUDE_DIRS
         "include"
     REQUIRES
+        ethernet_init
         esp_eth
         esp_netif
+        esp_event
         freertos
         lwip
-        cjson
 )
