@@ -99,3 +99,19 @@ BLD-510B motor controller wiring to ESP32 EVB:
 |F/R	   |GPIO17	   |Direction Control (Motor 2)|
 |EN	   |GPIO33	   |Enable (Motor 2)|
 |PG	   |GPIO35	   |Speed Feedback (Motor 2)|
+
+
+
+static MotorPins_t motors[MOTOR_COUNT] = {
+    //   [SV]         [F/R]       [EN]        [PG]
+    {GPIO_NUM_12, GPIO_NUM_16, GPIO_NUM_32, GPIO_NUM_34},
+    {GPIO_NUM_13, GPIO_NUM_17, GPIO_NUM_33, GPIO_NUM_35},
+    {GPIO_NUM_14, GPIO_NUM_2, GPIO_NUM_11, GPIO_NUM_36},
+    {GPIO_NUM_15, GPIO_NUM_4, GPIO_NUM_10, GPIO_NUM_39}};
+
+typedef struct {
+    gpio_num_t pwm_gpio;    // PWM → SV
+    gpio_num_t dir_gpio;    // F/R
+    gpio_num_t en_gpio;     // EN
+    gpio_num_t pulse_gpio;  // PG
+} MotorPins_t;
