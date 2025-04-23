@@ -36,10 +36,10 @@ void app_main(void)
     ESP_ERROR_CHECK(ethernet_setup(&eth_ports, &port_cnt));
 
     // —2— now bring up Ethernet (DHCP will trigger your got_ip_handler)
-    // ESP_LOGI(TAG, "init motors");
-    // // spawn your init task (gives RTOS a chance to feed WDT)
-    // // in main.c
-    // xTaskCreate(bldc_init_task, "bldc_init", 4 * 1024, NULL, 5, NULL);
+    ESP_LOGI(TAG, "init motors");
+    
+    // spawn your init task (gives RTOS a chance to feed WDT)
+    xTaskCreate(bldc_init_task, "bldc_init", 4 * 1024, NULL, 5, NULL);
 
     while (1)
     {

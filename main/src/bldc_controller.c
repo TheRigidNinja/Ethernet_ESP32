@@ -7,7 +7,7 @@
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_log.h"
-
+#include "driver/gpio.h"
 static const char *TAG = "bldc_ctrl";
 
 //----------------------------------------------------------------------
@@ -23,7 +23,7 @@ typedef struct
 static const MotorPins_t motors[MOTOR_COUNT] = {
     {.sv_pwm_gpio = GPIO_NUM_12, .dir_gpio = GPIO_NUM_16, .en_gpio = GPIO_NUM_32, .pg_gpio = GPIO_NUM_34},
     {.sv_pwm_gpio = GPIO_NUM_13, .dir_gpio = GPIO_NUM_17, .en_gpio = GPIO_NUM_33, .pg_gpio = GPIO_NUM_35},
-    {.sv_pwm_gpio = GPIO_NUM_14, .dir_gpio = GPIO_NUM_2, .en_gpio = GPIO_NUM_11, .pg_gpio = GPIO_NUM_36},
+    {.sv_pwm_gpio = GPIO_NUM_14, .dir_gpio = GPIO_NUM_2, .en_gpio = GPIO_NUM_0, .pg_gpio = GPIO_NUM_36},
     {.sv_pwm_gpio = GPIO_NUM_15, .dir_gpio = GPIO_NUM_4, .en_gpio = GPIO_NUM_10, .pg_gpio = GPIO_NUM_39},
 };
 
@@ -77,7 +77,7 @@ void motor_control_init(void)
         // make sure motor is off
         gpio_set_level(m->en_gpio, 0);
 
-        esp_task_wdt_reset();         // explicit feed
+        esp_task_wdt_reset(); // explicit feed
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
