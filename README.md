@@ -133,3 +133,40 @@ typedef struct {
     gpio_num_t en_gpio;     // EN
     gpio_num_t pulse_gpio;  // PG
 } MotorPins_t;
+
+
+
+
+
+Mini PC Side:
+
+|--------------------------------------------| Example Input | Example Output  |
+|--------------------------------------------|---------------|-----------------|
+| [SV (pwm)(aka RPM)]                                 |    650        |                 |
+| [F/R (forward and reverse)]                |    FORWARD    |                 |
+| [EN (start and stop)]                      |    START      |                 |
+| [PG (controller pulse for the BLDC motor)] |        show       |      3642P      |
+| [Target] |               |      3642P      |
+
+
+I want to give a set RPM for example 500RPM, with that it automatically figures out the PWM base on time. 
+
+I'm also contenplating how to implement this: Lets say i want to move 3m to the left. I wonder what kind of commands i should sent the robot.
+
+Do i even need to know what the pulse is on the mini PC.(I only ask because in my head the pulse is there to assist to keep a close to accurate timing on RPM)
+
+
+
+
+On the TCP server i want to configure it to except JSON files/commands
+
+
+
+I want to use the following pins to controller the BLDC motor controller: 
+[static MotorPins_t motors[MOTOR_COUNT] = {
+    //   [SV]         [F/R]       [EN]        [PG]
+    {GPIO_NUM_12, GPIO_NUM_16, GPIO_NUM_32, GPIO_NUM_34},
+    {GPIO_NUM_13, GPIO_NUM_17, GPIO_NUM_33, GPIO_NUM_35},
+    {GPIO_NUM_14, GPIO_NUM_2, GPIO_NUM_11, GPIO_NUM_36},
+    {GPIO_NUM_15, GPIO_NUM_4, GPIO_NUM_10, GPIO_NUM_39}};]
+
