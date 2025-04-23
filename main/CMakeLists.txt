@@ -1,2 +1,15 @@
-idf_component_register(SRCS "ethernet_example_main.c"
-                       INCLUDE_DIRS ".")
+idf_component_register(
+    SRCS
+        "src/main.c"
+        "src/ethernet_setup.c"
+        "src/tcp_com.c"
+        "src/bldc_controller.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        esp_eth
+        esp_netif
+        freertos
+        lwip
+        cjson
+)
