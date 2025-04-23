@@ -1,68 +1,124 @@
+// main/src/bldc_controller.c
+#include "freertos/FreeRTOS.h" // for pdMS_TO_TICKS()
+#include "freertos/task.h"     // for vTaskDelay()
+#include "esp_task_wdt.h"      // if you’re using esp_task_wdt_reset()
 #include "bldc_controller.h"
-#include "driver/gpio.h"
 #include "driver/ledc.h"
-#include "esp_attr.h"
+#include "driver/gpio.h"
+#include "esp_err.h"
+#include "esp_log.h"
 
-#define PULSE_GPIO   GPIO_NUM_39
-#define PWM_GPIO     GPIO_NUM_32
-#define EN_GPIO      GPIO_NUM_5
-#define DIR_GPIO     GPIO_NUM_17
-#define TIMER        LEDC_TIMER_0
-#define CHANNEL      LEDC_CHANNEL_0
+static const char *TAG = "bldc_ctrl";
 
-static volatile uint32_t _pulses;
+//----------------------------------------------------------------------
+// Per-motor pin assignments (fill in with your real GPIOs)
+typedef struct
+{
+    gpio_num_t sv_pwm_gpio; // LEDC PWM output
+    gpio_num_t dir_gpio;    // direction output
+    gpio_num_t en_gpio;     // enable output
+    gpio_num_t pg_gpio;     // pulse‐generator input
+} MotorPins_t;
 
-static void IRAM_ATTR _pulse_isr(void*){
-    _pulses++;
+static const MotorPins_t motors[MOTOR_COUNT] = {
+    {.sv_pwm_gpio = GPIO_NUM_12, .dir_gpio = GPIO_NUM_16, .en_gpio = GPIO_NUM_32, .pg_gpio = GPIO_NUM_34},
+    {.sv_pwm_gpio = GPIO_NUM_13, .dir_gpio = GPIO_NUM_17, .en_gpio = GPIO_NUM_33, .pg_gpio = GPIO_NUM_35},
+    {.sv_pwm_gpio = GPIO_NUM_14, .dir_gpio = GPIO_NUM_2, .en_gpio = GPIO_NUM_11, .pg_gpio = GPIO_NUM_36},
+    {.sv_pwm_gpio = GPIO_NUM_15, .dir_gpio = GPIO_NUM_4, .en_gpio = GPIO_NUM_10, .pg_gpio = GPIO_NUM_39},
+};
+
+//----------------------------------------------------------------------
+// LEDC configuration: one timer + one channel per motor
+#define BLDC_LED_TIMER LEDC_TIMER_0
+#define BLDC_LED_MODE LEDC_HIGH_SPEED_MODE
+#define BLDC_LED_DUTY_RES LEDC_TIMER_10_BIT // 10-bit: 0..1023
+
+void motor_control_init(void)
+{
+    ESP_LOGI(TAG, "Initializing %d BLDC motors", MOTOR_COUNT);
+
+    // 1) configure LEDC timer
+    ledc_timer_config_t timer_cfg = {
+        .speed_mode = BLDC_LED_MODE,
+        .timer_num = BLDC_LED_TIMER,
+        .duty_resolution = BLDC_LED_DUTY_RES,
+        .freq_hz = 20000, // 20 kHz PWM
+        .clk_cfg = LEDC_AUTO_CLK,
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&timer_cfg));
+
+    // 2) configure each motor’s channel & GPIOs
+    for (int i = 0; i < MOTOR_COUNT; i++)
+    {
+        const MotorPins_t *m = &motors[i];
+        // LEDC channel
+        ledc_channel_config_t ch_cfg = {
+            .speed_mode = BLDC_LED_MODE,
+            .channel = i, // use channel i
+            .timer_sel = BLDC_LED_TIMER,
+            .intr_type = LEDC_INTR_DISABLE,
+            .gpio_num = m->sv_pwm_gpio,
+            .duty = 0, // start off
+            .hpoint = 0,
+        };
+        ESP_ERROR_CHECK(ledc_channel_config(&ch_cfg));
+
+        // direction & enable pins
+        gpio_config_t io_cfg = {
+            .mode = GPIO_MODE_OUTPUT,
+            .pin_bit_mask = (1ULL << m->dir_gpio) | (1ULL << m->en_gpio),
+        };
+        ESP_ERROR_CHECK(gpio_config(&io_cfg));
+
+        // pulse-generator pin
+        gpio_set_direction(m->pg_gpio, GPIO_MODE_INPUT);
+        // TODO: attach your IRAM_ATTR pulse-count ISR here if needed
+
+        // make sure motor is off
+        gpio_set_level(m->en_gpio, 0);
+
+        esp_task_wdt_reset();         // explicit feed
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
 }
 
-void bldc_init(void){
-    // PWM timer & channel
-    ledc_timer_config(&(ledc_timer_config_t){
-        .speed_mode = LEDC_HIGH_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_10_BIT,
-        .timer_num = TIMER,
-        .freq_hz = 1000,
-        .clk_cfg = LEDC_AUTO_CLK
-    });
-    ledc_channel_config(&(ledc_channel_config_t){
-        .gpio_num = PWM_GPIO,
-        .speed_mode = LEDC_HIGH_SPEED_MODE,
-        .channel = CHANNEL,
-        .timer_sel = TIMER,
-        .duty = 0
-    });
-
-    // Dir + En
-    gpio_set_direction(DIR_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_direction(EN_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(EN_GPIO, 0);
-
-    // Pulse ISR
-    gpio_config(&(gpio_config_t){
-        .pin_bit_mask = 1ULL<<PULSE_GPIO,
-        .mode = GPIO_MODE_INPUT,
-        .intr_type = GPIO_INTR_POSEDGE
-    });
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(PULSE_GPIO, _pulse_isr, NULL);
+//----------------------------------------------------------------------
+// Helpers
+static inline bool valid_id(int id)
+{
+    return (id >= 0 && id < MOTOR_COUNT);
 }
 
-void bldc_set_enable(bool on){
-    gpio_set_level(EN_GPIO, on);
+//----------------------------------------------------------------------
+// Public API
+void motor_control_set_enable(int id, bool on)
+{
+    if (!valid_id(id))
+        return;
+    gpio_set_level(motors[id].en_gpio, on);
 }
 
-void bldc_set_direction(bool forward){
-    gpio_set_level(DIR_GPIO, forward);
+void motor_control_set_direction(int id, bool forward)
+{
+    if (!valid_id(id))
+        return;
+    gpio_set_level(motors[id].dir_gpio, forward);
 }
 
-void bldc_set_pwm_percent(uint8_t pct){
-    if (pct>100) pct=100;
-    uint32_t duty = (pct * ((1<<10)-1))/100;
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, CHANNEL, duty);
-    ledc_update_duty(LEDC_HIGH_SPEED_MODE, CHANNEL);
+void motor_control_set_pwm(int id, uint8_t pct)
+{
+    if (!valid_id(id))
+        return;
+    // scale 0–100% into 0–1023
+    uint32_t duty = (pct * ((1 << BLDC_LED_DUTY_RES) - 1)) / 100;
+    ESP_ERROR_CHECK(ledc_set_duty(BLDC_LED_MODE, (ledc_channel_t)id, duty));
+    ESP_ERROR_CHECK(ledc_update_duty(BLDC_LED_MODE, (ledc_channel_t)id));
 }
 
-uint32_t bldc_get_pulse_count(void){
-    return _pulses;
+uint32_t motor_control_get_pulses(int id)
+{
+    if (!valid_id(id))
+        return 0;
+    // if you have a hardware counter, return it; else read GPIO
+    return gpio_get_level(motors[id].pg_gpio);
 }

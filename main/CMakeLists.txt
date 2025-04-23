@@ -7,6 +7,7 @@ idf_component_register(
     INCLUDE_DIRS
         "include"
     REQUIRES
+        json
         ethernet_init
         esp_eth
         esp_netif

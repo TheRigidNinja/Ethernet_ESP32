@@ -20,8 +20,8 @@ esp_err_t ethernet_setup(esp_eth_handle_t **eth_handles, uint8_t *port_cnt)
     }
 
     // init LwIP + event loop
-    ESP_ERROR_CHECK( esp_netif_init() );
-    ESP_ERROR_CHECK( esp_event_loop_create_default() );
+    // ESP_ERROR_CHECK( esp_netif_init() );
+    // ESP_ERROR_CHECK( esp_event_loop_create_default() );
 
     for (int i = 0; i < *port_cnt; i++) {
         esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();

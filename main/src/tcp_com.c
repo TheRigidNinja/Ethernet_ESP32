@@ -8,7 +8,7 @@
 #include "lwip/inet.h"
 #include <string.h>
 #include "bldc_controller.h"     // your motor_control_*() API
-#include "cJSON"        // cJSON_*
+#include "cJSON.h"
 
 static const char *TAG         = "tcp_com";
 #define TCP_PORT                5000
@@ -40,18 +40,6 @@ static void eth_event_handler(void* arg, esp_event_base_t eb, int32_t id, void* 
         break;
     default:
         break;
-    }
-}
-
-//--------------------------------------------------------------------------------
-// IP event handler: when we get an IP, spin up the TCP server once
-static void got_ip_handler(void* arg, esp_event_base_t eb, int32_t id, void* data)
-{
-    ip_event_got_ip_t *e = (ip_event_got_ip_t*)data;
-    ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&e->ip_info.ip));
-    if (!tcp_task_running) {
-        tcp_task_running = true;
-        xTaskCreate(tcp_server_task, "tcp_srv", 8192, NULL, 5, NULL);
     }
 }
 
@@ -151,6 +139,20 @@ static void tcp_server_task(void *pv)
     // never reached
     close(srv);
     vTaskDelete(NULL);
+}
+
+
+
+//--------------------------------------------------------------------------------
+// IP event handler: when we get an IP, spin up the TCP server once
+static void got_ip_handler(void* arg, esp_event_base_t eb, int32_t id, void* data)
+{
+    ip_event_got_ip_t *e = (ip_event_got_ip_t*)data;
+    ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&e->ip_info.ip));
+    if (!tcp_task_running) {
+        tcp_task_running = true;
+        xTaskCreate(tcp_server_task, "tcp_srv", 8192, NULL, 5, NULL);
+    }
 }
 
 //--------------------------------------------------------------------------------
