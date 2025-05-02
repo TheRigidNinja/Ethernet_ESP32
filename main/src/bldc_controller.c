@@ -21,10 +21,10 @@ typedef struct
 } MotorPins_t;
 
 static const MotorPins_t motors[MOTOR_COUNT] = {
-    {.sv_pwm_gpio = GPIO_NUM_12, .dir_gpio = GPIO_NUM_16, .en_gpio = GPIO_NUM_32, .pg_gpio = GPIO_NUM_34},
-    {.sv_pwm_gpio = GPIO_NUM_13, .dir_gpio = GPIO_NUM_17, .en_gpio = GPIO_NUM_33, .pg_gpio = GPIO_NUM_35},
-    {.sv_pwm_gpio = GPIO_NUM_14, .dir_gpio = GPIO_NUM_2, .en_gpio = GPIO_NUM_0, .pg_gpio = GPIO_NUM_36},
-    {.sv_pwm_gpio = GPIO_NUM_15, .dir_gpio = GPIO_NUM_4, .en_gpio = GPIO_NUM_10, .pg_gpio = GPIO_NUM_39},
+    {.sv_pwm_gpio = GPIO_NUM_12, .dir_gpio = GPIO_NUM_16, .en_gpio = GPIO_NUM_32, .pg_gpio = GPIO_NUM_34}, //---W1
+    {.sv_pwm_gpio = GPIO_NUM_13, .dir_gpio = GPIO_NUM_17, .en_gpio = GPIO_NUM_33, .pg_gpio = GPIO_NUM_35}, //---W2
+    {.sv_pwm_gpio = GPIO_NUM_14, .dir_gpio = GPIO_NUM_2, .en_gpio = GPIO_NUM_15, .pg_gpio = GPIO_NUM_36},  //---W3
+    {.sv_pwm_gpio = GPIO_NUM_0, .dir_gpio = GPIO_NUM_4, .en_gpio = GPIO_NUM_10, .pg_gpio = GPIO_NUM_39},  //---W4
 };
 
 //----------------------------------------------------------------------
