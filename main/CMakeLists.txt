@@ -4,6 +4,7 @@ idf_component_register(
         "src/ethernet_setup.c"
         "src/tcp_com.c"
         "src/bldc_controller.c"
+        "src/bldc_pid.c"
     INCLUDE_DIRS
         "include"
     REQUIRES
