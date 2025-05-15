@@ -28,24 +28,33 @@ static const MotorPins_t motors[MOTOR_COUNT] = {
     {.sv_pwm_gpio = GPIO_NUM_3, .dir_gpio = GPIO_NUM_4, .en_gpio = GPIO_NUM_10, .pg_gpio = GPIO_NUM_39},   //---W4
 };
 
-
 //----------------------------------------------------------------------
 // Helpers
 static inline bool valid_id(int id)
 {
     return (id >= 0 && id < MOTOR_COUNT);
 }
+// track the last‐set direction for each motor
+static volatile bool motor_dir_state[MOTOR_COUNT] = {false};
 
-static volatile uint32_t pulse_counts[MOTOR_COUNT] = {0}; // for pulse count
+static volatile int32_t pulse_counts[MOTOR_COUNT] = {0}; // for pulse count
 static void IRAM_ATTR pulse_isr_handler(void *arg)
 {
-    uint32_t id = (uint32_t)arg;
-    //----// increment/decrement pulse count based on direction
-    bool forward = gpio_get_level(motors[id].dir_gpio);
+    int id = (int)(uintptr_t)arg;
+    if (id < 0 || id >= MOTOR_COUNT)
+        return;
+
+    // read *our* stored direction, not the pin
+    bool forward = motor_dir_state[id];
     pulse_counts[id] += forward ? +1 : -1;
+
+    // optional debug
+    ESP_EARLY_LOGI(TAG,
+                   "ISR: motor=%d  forward=%d  count=%ld",
+                   id, forward, pulse_counts[id]);
 }
 
-uint32_t motor_control_get_pulses(int id)
+int32_t motor_control_get_pulses(int id)
 {
     if (!valid_id(id))
         return 0;
@@ -102,10 +111,11 @@ void motor_control_init(void)
         gpio_set_intr_type(m->pg_gpio, GPIO_INTR_POSEDGE);
 
         // TODO: attach your IRAM_ATTR pulse-count ISR here if needed
-        gpio_isr_handler_add(m->pg_gpio, pulse_isr_handler, (void *)i);
+        gpio_isr_handler_add(m->pg_gpio, pulse_isr_handler, (void *)(uintptr_t)i);
 
         // The Enable pin should be pulled low in order for the motor to start spinning
         gpio_set_level(m->en_gpio, 1);
+        // ESP_LOGI(TAG, "This is(motor_control_init) en_gpio=%s",on ? "High" : "Low");
 
         esp_task_wdt_reset(); // explicit feed
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -124,18 +134,17 @@ void motor_control_set_enable(int id, bool on)
     if (!valid_id(id))
         return;
     gpio_set_level(motors[id].en_gpio, on);
+    ESP_LOGI(TAG, "This is(motor%d_control_set_enable) en_gpio=%s",id,on ? "High" : "Low");
 }
 
 void motor_control_set_direction(int id, bool forward)
 {
     if (!valid_id(id))
         return;
+
+    motor_dir_state[id] = forward;
     gpio_set_level(motors[id].dir_gpio, forward);
-    ESP_LOGI(TAG,
-             "motor[%d] → dir_gpio=%d  forward=%s",
-             id,
-             motors[id].dir_gpio,
-             forward ? "true" : "false");
+    ESP_LOGI(TAG,"motor[%d] → en_gpio=%s → dir_gpio=%d → forward=%s",id,motors[id].en_gpio? "High" : "Low",motors[id].dir_gpio, forward ? "true" : "false");
 }
 
 void motor_control_set_pwm(int id, uint8_t pct)

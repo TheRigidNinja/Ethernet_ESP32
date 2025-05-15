@@ -9,7 +9,6 @@
 #include "bldc_controller.h"
 #include "esp_task_wdt.h"
 #include "bldc_pid.h" // for PID_config_t
-
 static const char *TAG = "main";
 
 static void bldc_init_task(void *arg)
@@ -24,19 +23,33 @@ static void bldc_init_task(void *arg)
     vTaskDelete(NULL);
 }
 
-
 // --------------------------------------------------------------------------------
 // This is the control loop task that runs every 10ms
-static void control_task(void *arg) {
+static void control_task(void *arg)
+{
     const TickType_t xFrequency = pdMS_TO_TICKS(10); // 10ms control loop
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
-    while (1) {
+    while (1)
+    {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
-        motor_control_update_all();
+        motor_control_update_cascade_all();
     }
 }
 
+// --------------------------------------------------------------------------------
+// It uses a simple PID to make the motor go to a setpoint speed
+// The setpoint is set in the speed_control_task() function
+static void cascade_task(void *arg)
+{
+    const TickType_t period = pdMS_TO_TICKS(CONTROL_PERIOD_MS);
+    TickType_t last_wake = xTaskGetTickCount();
+    while (1)
+    {
+        vTaskDelayUntil(&last_wake, period);
+        motor_control_update_cascade_all();
+    }
+}
 
 void app_main(void)
 {
@@ -58,6 +71,10 @@ void app_main(void)
     // (this task runs every 10ms and calls motor_control_update_all())
     ESP_LOGI(TAG, "start control task");
     xTaskCreate(control_task, "control", 4096, NULL, 5, NULL);
+
+    //----/4— start the speed control task
+    // (this task runs every 50ms and calls motor_control_update_speed())
+    xTaskCreate(cascade_task, "cascade", 4 * 1024, NULL, 5, NULL);
 
     while (1)
     {

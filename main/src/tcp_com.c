@@ -8,8 +8,8 @@
 #include "lwip/inet.h"
 #include <string.h>
 #include "bldc_controller.h" // your motor_control_*() API
-#include "cJSON.h"
 #include "bldc_pid.h"
+#include "cJSON.h"
 
 static const char *TAG = "tcp_com";
 #define TCP_PORT 5000
@@ -124,7 +124,7 @@ static void tcp_server_task(void *pv)
                         cJSON *jdir = cJSON_GetObjectItem(m, "direction");
                         cJSON *jpwm = cJSON_GetObjectItem(m, "pwm");
                         cJSON *jgp = cJSON_GetObjectItem(m, "pulses");
-                        cJSON *target_item = cJSON_GetObjectItem(m, "target");
+                        cJSON *jtarget  = cJSON_GetObjectItem(m, "target");
                         cJSON *pid_item = cJSON_GetObjectItem(m, "pid");
                         cJSON *kp = cJSON_GetObjectItem(pid_item, "kp");
                         cJSON *ki = cJSON_GetObjectItem(pid_item, "ki");
@@ -137,23 +137,15 @@ static void tcp_server_task(void *pv)
                         if (id < 0 || id >= MOTOR_COUNT)
                             continue;
 
-                        // Enable/disable ##-------// motor enabled has to be to low in order to get motor spinning 
+                        // Enable/disable ##-------// motor enabled has to be to low in order to get motor spinning
                         if (cJSON_IsBool(jen))
                         {
-                            motor_control_set_enable(id, cJSON_IsTrue(jen));
-
-                            for (int i = 0; i < MOTOR_COUNT; i++)
-                            {
-                                uint32_t pulse_count = motor_control_get_pulses(i);
-                                // ESP_LOGI(TAG, "motor[%lu] → pulse_gpio=%lu  pulse_count=%lu",i, motors[i].pg_gpio, pulse_count);
-
-                                // ESP_LOGI(TAG, "VALUE: %lu BLDC motors pulse %d", pulse_count, );
-                            }
+                            motor_control_set_enable(id, !cJSON_IsTrue(jen));
+                            ESP_LOGI(TAG, "-----------GPIO=%d", !cJSON_IsTrue(jen));
                         }
 
                         // Direction
-                        if (cJSON_IsString(jdir))
-                        {
+                        if (cJSON_IsString(jdir)) {
                             bool f = (strcmp(jdir->valuestring, "forward") == 0);
                             motor_control_set_direction(id, f);
                         }
@@ -162,21 +154,23 @@ static void tcp_server_task(void *pv)
                         if (cJSON_IsNumber(jpwm))
                         {
                             motor_control_set_pwm(id, (uint8_t)jpwm->valueint);
+                            // motor_control_set_pwm_limit(id, (uint8_t)jpwm->valueint);
                         }
 
                         //------// PID config
-                        if (target_item && cJSON_IsNumber(target_item))
+                        if (cJSON_IsNumber(jtarget)) // target_item && cJSON_IsNumber(target_item)
                         {
-                            motor_control_set_target(id, (int32_t)target_item->valueint);
+                            int32_t tgt = jtarget->valueint;
+                            motor_control_set_target(id, tgt);
                         }
                         // PID config: kp, ki, kd
                         if (pid_item && cJSON_IsObject(pid_item))
                         {
                             PID_config_t pid = {
                                 .kp = 0.5f,
-                                .ki = 0.01f,
+                                .ki = 0.1f,
                                 .kd = 0.1f,
-                                .integral_max = 100.0f,
+                                .integral_max = 20.0f,
                                 .output_max = 100.0f};
 
                             cJSON *kp = cJSON_GetObjectItemCaseSensitive(pid_item, "kp");
@@ -191,6 +185,7 @@ static void tcp_server_task(void *pv)
                                 pid.kd = (float)kd->valuedouble;
 
                             motor_control_set_pid(id, pid);
+                            ESP_LOGI(TAG, "motor[%d] → pid: kp=%.2f ki=%.2f kd=%.2f", id, pid.kp, pid.ki, pid.kd);
                         }
 
                         //------// Pulse count
