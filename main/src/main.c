@@ -6,53 +6,55 @@
 
 #include "ethernet_setup.h"
 #include "tcp_com.h"
-#include "bldc_controller.h"
 #include "esp_task_wdt.h"
-#include "bldc_pid.h" // for PID_config_t
-static const char *TAG = "main";
+#include "get_imu.h" // for PID_config_t
+#include "driver/i2c.h" // <— needed for I2C_NUM_0 & i2c_master_write_to_device
 
-static void bldc_init_task(void *arg)
+
+
+static const char *TAG = "MAIN";
+
+// Uncomment to only scan & list I²C devices on boot
+// #define ENABLE_I2C_SCAN
+
+void i2c_scan_task(void *pv)
 {
-    // 1) tell the task‐WDT to watch *this* task
-    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
-
-    motor_control_init(); // your long config routine
-
-    // 2) we're done—unregister
-    ESP_ERROR_CHECK(esp_task_wdt_delete(NULL));
+    ESP_LOGI(TAG, "I²C Scanner starting...");
+    for (uint8_t addr = 1; addr < 127; addr++)
+    {
+        if (i2c_master_write_to_device(
+                I2C_NUM_0, addr << 1, NULL, 0, pdMS_TO_TICKS(100)) == ESP_OK)
+        {
+            ESP_LOGI(TAG, "Found I2C device at 0x%02X", addr);
+        }
+    }
     vTaskDelete(NULL);
 }
 
-// --------------------------------------------------------------------------------
-// This is the control loop task that runs every 10ms
-static void control_task(void *arg)
+void imu_log_task(void *pv)
 {
-    const TickType_t xFrequency = pdMS_TO_TICKS(10); // 10ms control loop
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-
+    imu_data_t d;
     while (1)
     {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-        motor_control_update_cascade_all();
-    }
-}
-
-// --------------------------------------------------------------------------------
-// It uses a simple PID to make the motor go to a setpoint speed
-// The setpoint is set in the speed_control_task() function
-static void cascade_task(void *arg)
-{
-    const TickType_t period = pdMS_TO_TICKS(CONTROL_PERIOD_MS);
-    TickType_t last_wake = xTaskGetTickCount();
-    while (1)
-    {
-        vTaskDelayUntil(&last_wake, period);
-        motor_control_update_cascade_all();
+        if (get_imu_data(&d) == ESP_OK)
+        {
+            ESP_LOGI("IMU_TEST",
+                     "A: %.2f,%.2f,%.2f  G: %.2f,%.2f,%.2f",
+                     d.accel[0], d.accel[1], d.accel[2],
+                     d.gyro[0], d.gyro[1], d.gyro[2]);
+        }
+        else
+        {
+            ESP_LOGW("IMU_TEST", "read error");
+        }
+        vTaskDelay(pdMS_TO_TICKS(100)); // 10 Hz
     }
 }
 
 void app_main(void)
 {
+    ESP_LOGI(TAG, "App starting…");
+
     // —1— bring up TCP/IP & hook events
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -63,21 +65,15 @@ void app_main(void)
     uint8_t port_cnt = 0;
     ESP_ERROR_CHECK(ethernet_setup(&eth_ports, &port_cnt));
 
-    //----/2— start the TCP server (after IP is up)
-    ESP_LOGI(TAG, "init motors");
-    xTaskCreate(bldc_init_task, "bldc_init", 4 * 1024, NULL, 5, NULL);
+    // 2) Init IMU
+    ESP_ERROR_CHECK(imu_init());
 
-    //----/3— start the control loop task
-    // (this task runs every 10ms and calls motor_control_update_all())
-    ESP_LOGI(TAG, "start control task");
-    xTaskCreate(control_task, "control", 4096, NULL, 5, NULL);
-
-    //----/4— start the speed control task
-    // (this task runs every 50ms and calls motor_control_update_speed())
-    xTaskCreate(cascade_task, "cascade", 4 * 1024, NULL, 5, NULL);
-
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+#ifdef ENABLE_I2C_SCAN
+    xTaskCreate(i2c_scan_task, "i2c_scan", 2048, NULL, 5, NULL);
+#else
+    // 3a) serial console logger
+    xTaskCreate(imu_log_task, "imu_log", 4096, NULL, 5, NULL);
+    // 3b) start TCP server + JSON streamer
+    tcp_com_start();
+#endif
 }

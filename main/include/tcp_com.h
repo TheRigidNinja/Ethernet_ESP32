@@ -1,4 +1,5 @@
 #pragma once
+#include "get_imu.h"
 
 /**
  * @brief  Install ETH/IP event handlers and start JSON‐over‐TCP server.

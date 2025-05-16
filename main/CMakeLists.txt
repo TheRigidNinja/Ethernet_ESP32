@@ -3,16 +3,15 @@ idf_component_register(
         "src/main.c"
         "src/ethernet_setup.c"
         "src/tcp_com.c"
-        "src/bldc_controller.c"
-        "src/bldc_pid.c"
+        "src/get_imu.c"
     INCLUDE_DIRS
         "include"
     REQUIRES
-        json
         ethernet_init
         esp_eth
         esp_netif
         esp_event
         freertos
         lwip
+        driver
 )
